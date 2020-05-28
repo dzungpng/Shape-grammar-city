@@ -1,7 +1,7 @@
 import { vec3 } from "gl-matrix";
 import Turtle from './Turtle'
 
-interface Branch {
+export interface Branch {
     start: vec3;
     end: vec3;
 }
@@ -141,19 +141,19 @@ class LSystem {
             else if (sym == "^") {
                 turtle.applyLeftRot(-this.angle);
             }
-            else if (sym == "\\") {
+            else if (sym === "\\") {
                 turtle.applyForwardRot(this.angle);
             }
-            else if (sym == "/") {
+            else if (sym === "/") {
                 turtle.applyForwardRot(-this.angle);
             }
-            else if (sym == "|") {
+            else if (sym === "|") {
                 turtle.applyUpRot(180);
             }
-            else if (sym == "[") {
+            else if (sym === "[") {
                 stack.push(turtle);
             }
-            else if (sym == "]") {
+            else if (sym === "]") {
                 turtle = stack.slice(-1).pop();
             }
             else {

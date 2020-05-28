@@ -1,36 +1,34 @@
 import {vec3, vec4} from 'gl-matrix';
 import * as Stats from 'stats-js';
 import * as DAT from 'dat-gui';
-import Icosphere from './geometry/Icosphere';
-import Square from './geometry/Square';
-import Cube from './geometry/Cube'
+
+import Cube from './geometry/Cube';
+import Mesh from './geometry/Mesh';
+
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 
+
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
-  tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
-  geoColorR: 0, 
-  geoColorG: 1, 
-  geoColorB: 0,
-  shader: 'lambert'
+  branchColor: [ 0, 128, 255 ],
+  step: 2,
+  angle: 22,
+  iteration: 2,
+  grammar: 'F \n F->F[+F]F[-F]F',
 };
 
-let icosphere: Icosphere;
-let square: Square;
 let cube: Cube;
+let branchMesh: Mesh;
 
 function loadScene() {
-  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
-  icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
-  square.create();
   cube = new Cube(vec3.fromValues(0, 0, 0));
   cube.create();
+  branchMesh = new Mesh();
 }
 
 function main() {
@@ -43,13 +41,19 @@ function main() {
   document.body.appendChild(stats.domElement);
 
   // Add controls to the gui
-  const gui = new DAT.GUI();
-  gui.add(controls, 'tesselations', 0, 8).step(1);
+  const gui = new DAT.GUI({width: 400});
   gui.add(controls, 'Load Scene');
-  gui.add(controls, 'geoColorR', 0, 1).step(0.1);
-  gui.add(controls, 'geoColorG', 0, 1).step(0.1);
-  gui.add(controls, 'geoColorB', 0, 1).step(0.1);
-  gui.add(controls, 'shader', ['lambert', 'custom'])
+  gui.addColor(controls, 'branchColor'); 
+  gui.add(controls, 'step', 1, 10).step(1);
+  gui.add(controls, 'angle', 1, 180).step(1);
+  gui.add(controls, 'iteration', 1, 20).step(1);
+  gui.add(controls, 'grammar', [
+    'F \n F->F[+F]F[-F]F',
+    'F \n F->[+F]F[-F][F]',
+    'F \n F->FF-[-F+F+F]+[+F-F-F]',
+    'X \n X->F[+X]F[-X]+X \n F->FF',
+    'X \n X->F[+X][-X]FX \n F->FF'
+  ]);
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -67,18 +71,12 @@ function main() {
   const camera = new Camera(vec3.fromValues(0, 0, 5), vec3.fromValues(0, 0, 0));
 
   const renderer = new OpenGLRenderer(canvas);
-  // renderer.setGeoColor(vec4.fromValues(controls.geoColorR, controls.geoColorG, controls.geoColorB, 1))
   renderer.setClearColor(0.2, 0.2, 0.2, 1);
   gl.enable(gl.DEPTH_TEST);
 
   const lambert = new ShaderProgram([
     new Shader(gl.VERTEX_SHADER, require('./shaders/lambert-vert.glsl')),
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
-  ]);
-
-  const custom = new ShaderProgram([
-    new Shader(gl.VERTEX_SHADER, require('./shaders/custom-vert.glsl')),
-    new Shader(gl.FRAGMENT_SHADER, require('./shaders/custom-frag.glsl')),
   ]);
 
   // This function will be called every frame
@@ -88,11 +86,8 @@ function main() {
     stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
-    renderer.setGeoColor(vec4.fromValues(controls.geoColorR, controls.geoColorG, controls.geoColorB, 1));
-    const shader = controls.shader === 'lambert' ? lambert : custom;
-    renderer.render(camera, shader, [
-      //icosphere,
-      //square,
+    renderer.setGeoColor(vec4.fromValues(controls.branchColor[0]/255.0, controls.branchColor[1]/255.0, controls.branchColor[2]/255.0, 1));
+    renderer.render(camera, lambert, [
       cube,
     ], time);
     time++;
