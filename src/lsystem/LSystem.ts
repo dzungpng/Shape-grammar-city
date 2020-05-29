@@ -1,58 +1,84 @@
-import { vec3 } from "gl-matrix";
-import Turtle from './Turtle'
-
-export interface Branch {
-    start: vec3;
-    end: vec3;
-}
+import Turtle from './Turtle';
+import {vec3, vec4} from 'gl-matrix';
 
 export interface Geometry {
-    position: vec3;
-    str: string;
+    pos: vec3;
+    geom: string;
+};
+
+
+export interface Branch {
+    startPos: vec3;
+    endPos:   vec3;
 }
 
-class LSystem {
-    // mappings of rules
+export class LSystem
+{
+    // rules are stored here
     productions: Map<string, string[]>;
     // result after each iteration
-    iterations: string[];
+    iterations: Array<string> = [];
+    // current stirng interperation result
+    current: string = "";
 
-    current: string;
-    angle: number;
-    step: number;
-    grammar: string;
+    mDfltAngle: number = 45.0; // default value
+    mDfltStep: number = 1.0;   // default value
+    mGrammar: string = "";
 
-    constructor(defaultAngle: number, defaultStep: number) {
-        this.angle = defaultAngle;
-        this.step = defaultStep;
-        this.productions = new Map<string, string[]>();
-        this.iterations = [];
+    // outputs
+    branches: Array<Branch> = [];
+    geoms: Array<Geometry> = [];
+
+    constructor(angle: number, step: number){
+        // initialize map
+        this.mDfltAngle = angle;
+        this.mDfltStep = step;
+        this.productions = new Map();
     }
 
-    setDefaultAngle(defaultAngle: number) {
-        this.angle = defaultAngle;
+    loadProgram(rules: Array<string>){
+        this.reset();
+
+        console.log('this is rules input');
+        console.log(rules);
+
+        for(var rule of rules){
+            this.addProduction(rule);
+        }
     }
 
-    setDefaultStep(defaultStep: number) {
-        this.step = defaultStep;
+    setDefaultAngle(degrees: number){
+        this.mDfltAngle = degrees;
     }
 
-    reset() {
-        this.current = '';
-        this.iterations = [];
-        this.productions.clear();
+    setDefaultStep(distance: number){
+        this.mDfltStep = distance;
+    }
+    
+    // Iterate grammar
+    getIteration(n: number): string {
+        if (n >= this.iterations.length)
+        {
+            for (let i = this.iterations.length; i <= n; i++)
+            {
+                this.current = this.iterate(this.current);
+                this.iterations.push(this.current);
+            }        
+        }
+        return this.iterations[n];
     }
 
     iterate(input: string): string {
-        var output = '';
-        for (let i = 0; i < input.length; i++) {
-            let sym: string = input.substr(i, 1);
+        var output = "";
+        for (let i = 0; i < input.length; i++)
+        {
+            let sym: string = input.substr(i,1);
             let next;
-            if (this.productions.has(sym)) {
+            if(this.productions.has(sym)){
                 var selectedIdx = Math.floor(this.productions.get(sym).length * Math.random());
                 next = this.productions.get(sym)[selectedIdx];
             }
-            else {
+            else{
                 next = sym;
             }
             output = output + next;
@@ -60,56 +86,59 @@ class LSystem {
         return output;
     }
 
-    getIteration(n: number): string {
-        if (n >= this.iterations.length) {
-            for (let i = this.iterations.length; i <= n; i++) {
-                this.current = this.iterate(this.current);
-                this.iterations.push(this.current);
-            }
-        }
-        return this.iterations[n];
-    }
+    // All rule and axiom should be added through this
+    addProduction(line: string){
 
-    addProduction(line: string) {
         let index;
-
+        
+        // 1. Strip whitespace
         line = line.replace(/ /g, '');
         if (line.length == 0) return;
-
+    
+        // 2. Split productions
         index = line.indexOf("->");
-        if (index != -1) {
+        if (index != -1)
+        {
             let symFrom = line.substr(0, index);
-            let symTo = line.substr(index + 2);
+            let symTo = line.substr(index+2);
 
-            if (!this.productions.has(symFrom)) {
-                this.productions.set(symFrom, []);
+            // if it's empty, initialize it
+            if(!this.productions.has(symFrom)){
+                this.productions.set(symFrom, []);                
             }
 
             this.productions.get(symFrom).push(symTo);
         }
-        else {
+        else  // assume its the start sym
+        {
             this.current = line;
             this.iterations.push(line);
         }
     }
 
-    loadProgram(rules: string[]) {
-        this.reset();
-
-        for (var rule of rules) {
-            this.addProduction(rule);
-        }
+    reset(){
+        this.current = "";
+        this.iterations = [];
+        this.productions.clear();
     }
 
+    // process and generate outputs
+    // input is iteration number
+    process(n: number) {
 
-    process(n: number, branches: Branch[], models: Geometry[]) {
-        let turtle: Turtle = new Turtle;
-        let stack: Turtle[] = [];
+        // intialize arrays
+        this.branches = [];
+        this.geoms = [];
 
-        // Initially turtle is pointing upwards
-        turtle.applyUpRot(90);
+        var turtle = new Turtle();
 
-        let insn: string = this.getIteration(n);
+        var stack: Array<Turtle> = [];
+    
+        var insn = this.getIteration(n);
+
+        console.log('this is the result string');
+        console.log(insn);
+
         for (let i = 0; i < insn.length; i++)
         {
             let sym = insn.substr(i,1);
@@ -117,45 +146,47 @@ class LSystem {
             {   
                 let start = vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2]);
 
-                turtle.moveForward(this.angle);
+                turtle.moveForward(this.mDfltStep);
 
-                branches.push({start: start, 
-                              end: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2])});
+                this.branches.push({startPos: start, 
+                                    endPos: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2])});
             }
             else if (sym == "f")
             {
-                turtle.moveForward(this.step);
+                turtle.moveForward(this.mDfltStep);
             }
             else if (sym == "+")
             {
-                turtle.applyUpRot(this.angle);
+                turtle.applyUpRot(this.mDfltAngle);
             }
             else if (sym == "-")
             {   
-                turtle.applyUpRot(-this.angle);                
+                turtle.applyUpRot(-this.mDfltAngle);                
             }
             else if (sym == "&")
             {
-                turtle.applyLeftRot(this.angle);
+                turtle.applyLeftRot(this.mDfltAngle);
             }
             else if (sym == "^")
             {
-                turtle.applyLeftRot(-this.angle);
+                turtle.applyLeftRot(-this.mDfltAngle);
             }
             else if (sym == "\\")
             {
-                turtle.applyForwardRot(this.angle);
+                turtle.applyForwardRot(this.mDfltAngle);
             }
             else if (sym == "/")
             {
-                turtle.applyForwardRot(-this.angle);
+                turtle.applyForwardRot(-this.mDfltAngle);
             }
             else if (sym == "|")
             {
                 turtle.applyUpRot(180.0);
             }
-            else if (sym === "[") {
+            else if (sym == "[")
+            {   
                 let tmpTurtle = new Turtle(turtle.pos, turtle.up, turtle.forward, turtle.left);
+
                 stack.push(tmpTurtle);
             }
             else if (sym == "]")
@@ -180,10 +211,20 @@ class LSystem {
             }
             else
             {
-                models.push({position: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2]), str: sym});
+                this.geoms.push({pos: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2]), geom: sym});
             }
         }
-    }
-}
+    } 
 
-export default LSystem;
+    // result will only exist 
+    // after call process() func
+    getGeometry(): Array<Geometry> {
+        return this.geoms;
+    }
+    
+    getBranches(): Array<Branch> {
+        return this.branches;
+    }
+
+
+};
