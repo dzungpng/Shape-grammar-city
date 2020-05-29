@@ -6,7 +6,7 @@ export interface Branch {
     end: vec3;
 }
 
-interface Geometry {
+export interface Geometry {
     position: vec3;
     str: string;
 }
@@ -101,67 +101,86 @@ class LSystem {
         }
     }
 
-    process(n: number, branches: Branch[]) {
-        let models: Geometry[];
-        this.processHelper(n, branches, models);
-    }
 
-    processHelper(n: number, branches: Branch[], models: Geometry[]) {
-        let turtle: Turtle;
-        let stack: Turtle[];
+    process(n: number, branches: Branch[], models: Geometry[]) {
+        let turtle: Turtle = new Turtle;
+        let stack: Turtle[] = [];
 
         // Initially turtle is pointing upwards
         turtle.applyUpRot(90);
 
         let insn: string = this.getIteration(n);
-        for (let i = 0; i < insn.length; i++) {
-            let sym: string = insn.substr(i, 1);
-
-            if (sym === "F") {
+        for (let i = 0; i < insn.length; i++)
+        {
+            let sym = insn.substr(i,1);
+            if (sym == "F")
+            {   
                 let start = vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2]);
-                turtle.moveForward(this.step);
-                const branch : Branch = {
-                    start: start,
-                    end: turtle.pos
-                }
-                branches.push(branch);
+
+                turtle.moveForward(this.angle);
+
+                branches.push({start: start, 
+                              end: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2])});
             }
-            else if (sym === "f") {
+            else if (sym == "f")
+            {
                 turtle.moveForward(this.step);
             }
-            else if (sym === "+") {
+            else if (sym == "+")
+            {
                 turtle.applyUpRot(this.angle);
             }
-            else if (sym === "-") {
-                turtle.applyUpRot(-this.angle);
+            else if (sym == "-")
+            {   
+                turtle.applyUpRot(-this.angle);                
             }
-            else if (sym === "&") {
+            else if (sym == "&")
+            {
                 turtle.applyLeftRot(this.angle);
             }
-            else if (sym == "^") {
+            else if (sym == "^")
+            {
                 turtle.applyLeftRot(-this.angle);
             }
-            else if (sym === "\\") {
+            else if (sym == "\\")
+            {
                 turtle.applyForwardRot(this.angle);
             }
-            else if (sym === "/") {
+            else if (sym == "/")
+            {
                 turtle.applyForwardRot(-this.angle);
             }
-            else if (sym === "|") {
-                turtle.applyUpRot(180);
+            else if (sym == "|")
+            {
+                turtle.applyUpRot(180.0);
             }
             else if (sym === "[") {
-                stack.push(turtle);
+                let tmpTurtle = new Turtle(turtle.pos, turtle.up, turtle.forward, turtle.left);
+                stack.push(tmpTurtle);
             }
-            else if (sym === "]") {
-                turtle = stack.slice(-1).pop();
+            else if (sym == "]")
+            {   
+                // return the last element and pop
+                let tmpTurtle = stack.pop();
+                turtle.pos[0] = tmpTurtle.pos[0];
+                turtle.pos[1] = tmpTurtle.pos[1];
+                turtle.pos[2] = tmpTurtle.pos[2];
+                
+                turtle.forward[0] = tmpTurtle.forward[0];
+                turtle.forward[1] = tmpTurtle.forward[1];
+                turtle.forward[2] = tmpTurtle.forward[2];
+
+                turtle.left[0] = tmpTurtle.left[0];
+                turtle.left[1] = tmpTurtle.left[1];
+                turtle.left[2] = tmpTurtle.left[2];
+
+                turtle.up[0] = tmpTurtle.up[0];
+                turtle.up[1] = tmpTurtle.up[1];
+                turtle.up[2] = tmpTurtle.up[2];
             }
-            else {
-                var geo : Geometry = {
-                    position: turtle.pos,
-                    str: sym
-                }
-                models.push(geo);
+            else
+            {
+                models.push({position: vec3.fromValues(turtle.pos[0], turtle.pos[1], turtle.pos[2]), str: sym});
             }
         }
     }

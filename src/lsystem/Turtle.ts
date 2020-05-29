@@ -8,17 +8,24 @@ class Turtle {
     Rad2Deg: number = 57.295779513082320876798154814105;
     Deg2Rad: number = 0.017453292519943295769236907684886;
 
-    constructor() {
-        this.pos = vec3.fromValues(0, 0, 0);
-        this.up = vec3.fromValues(0, 0, 1);
-        this.forward = vec3.fromValues(1, 0, 0);
-        this.left = vec3.fromValues(0, 1, 0);
+    constructor(_pos: vec3 = vec3.fromValues(.0, .0, .0),
+                _up:  vec3 = vec3.fromValues(.0, 1., .0), 
+                _forward: vec3 = vec3.fromValues(.0, .0, 1.),
+                _left: vec3 = vec3.fromValues(1., .0, .0)) 
+    {   
+        this.pos = vec3.fromValues(_pos[0], _pos[1], _pos[2]);
+
+        this.up  = vec3.fromValues(_up[0], _up[1], _up[2]);
+
+        this.forward = vec3.fromValues(_forward[0], _forward[1], _forward[2]);
+
+        this.left = vec3.fromValues(_left[0], _left[1], _left[2]);
     }
 
     moveForward(length : number) {
-        this.pos[0] += length * this.forward[0];
-        this.pos[1] += length * this.forward[1];
-        this.pos[2] += length * this.forward[2];
+        let tmp = vec3.create();
+        vec3.multiply(tmp, [length, length, length], this.forward);  
+        vec3.add(this.pos, this.pos, tmp);
     }
 
     applyUpRot(degrees : number) {                                                  
